@@ -526,6 +526,19 @@ fn draw_config_screen(egui_ctx: &egui_macroquad::egui::Context, configs: &mut [V
                     });
                 });
 
+                // Show vehicle characteristics
+                ui.add_space(5.0);
+                ui.horizontal(|ui| {
+                    use examen_parcial::vehicle::create_vehicle_preset;
+                    let characteristics = create_vehicle_preset(config.vehicle_type);
+
+                    ui.label(egui::RichText::new(format!(
+                        "⚙️ Maniobrabilidad: {:.0}°/s | Vel. Máx: {:.0} u/s",
+                        characteristics.maneuverability.to_degrees(),
+                        characteristics.max_velocity
+                    )).size(13.0).color(egui::Color32::from_gray(180)));
+                });
+
                 ui.add_space(10.0);
 
                 ui.horizontal(|ui| {
