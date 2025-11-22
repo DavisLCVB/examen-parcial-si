@@ -1,102 +1,91 @@
-use std::vec;
+// Unified entry point for the Fuzzy Navigation System
+//
+// Run with:
+//   cargo run -- --mode navigation [--iterations N]
+//   cargo run -- --mode benchmark [--iterations N]
+//   cargo run -- --mode visualizer
+//   cargo run -- --mode export-memberships [--output-dir DIR]
 
-use examen_parcial::fuzzy_system::{triangular, Antecedent, Consequent, FuzzyRule, FuzzySet, FuzzySystem, LinguisticVariable, RuleOperator};
+use clap::Parser;
+use examen_parcial::membership_export;
+use std::process;
 
+mod navigation_runner;
+mod benchmark_runner;
+mod visualizer_runner;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Sistema de Navegación Difusa Multi-Vehículo", long_about = None)]
+struct Args {
+    #[arg(short, long, value_name = "MODE")]
+    #[arg(help = "Modo de ejecución: navigation, benchmark, visualizer, export-memberships")]
+    mode: String,
+
+    #[arg(short, long, default_value_t = 30)]
+    #[arg(help = "Número de iteraciones (solo para benchmark)")]
+    iterations: usize,
+
+    #[arg(short, long, default_value = "output/memberships")]
+    #[arg(help = "Directorio de salida para exportar funciones de pertenencia")]
+    output_dir: String,
+
+    #[arg(short = 't', long)]
+    #[arg(help = "Número de threads para benchmark paralelo (por defecto: mitad de los cores disponibles)")]
+    threads: Option<usize>,
+}
 
 fn main() {
-    // Air conditioner control system
-    // Note: This AC system considers both cooling AND dehumidification
-    // High humidity requires more AC power even at lower temperatures for dehumidification
-    let mut system = FuzzySystem::new("Air conditioner system");
+    let args = Args::parse();
 
-    // Input variables
-    let mut temp_var = LinguisticVariable::new("Temperature", (0.0, 100.0));
-    temp_var.add_set(FuzzySet::new("very cold", triangular(0.0, 0.0, 20.0)));
-    temp_var.add_set(FuzzySet::new("cold", triangular(10.0, 25.0, 40.0)));
-    temp_var.add_set(FuzzySet::new("warm", triangular(30.0, 50.0, 70.0)));
-    temp_var.add_set(FuzzySet::new("hot", triangular(60.0, 80.0, 100.0)));
-    system.add_input(temp_var);
+    match args.mode.to_lowercase().as_str() {
+        "navigation" | "nav" => {
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!("║   MODO: NAVEGACIÓN MULTI-VEHÍCULO                    ║");
+            println!("╚══════════════════════════════════════════════════════╝\n");
+            navigation_runner::run();
+        }
 
-    let mut humidity_var = LinguisticVariable::new("Humidity", (0.0, 100.0));
-    humidity_var.add_set(FuzzySet::new("low", triangular(0.0, 0.0, 40.0)));
-    humidity_var.add_set(FuzzySet::new("medium", triangular(30.0, 50.0, 70.0)));
-    humidity_var.add_set(FuzzySet::new("high", triangular(60.0, 100.0, 100.0)));
-    system.add_input(humidity_var);
+        "benchmark" | "bench" => {
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!("║   MODO: BENCHMARK                                    ║");
+            println!("╚══════════════════════════════════════════════════════╝\n");
+            benchmark_runner::run(args.iterations, args.threads);
+        }
 
-    // Output variable
-    let mut ac_power_var = LinguisticVariable::new("AC Power", (0.0, 100.0));
-    ac_power_var.add_set(FuzzySet::new("low", triangular(0.0, 0.0, 40.0)));
-    ac_power_var.add_set(FuzzySet::new("medium", triangular(30.0, 50.0, 70.0)));
-    ac_power_var.add_set(FuzzySet::new("high", triangular(60.0, 100.0, 100.0)));
-    system.set_output(ac_power_var);
+        "visualizer" | "viz" | "visual" => {
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!("║   MODO: VISUALIZADOR                                 ║");
+            println!("╚══════════════════════════════════════════════════════╝\n");
+            visualizer_runner::run();
+        }
 
-    // Define rules
-    // Rule 1: High humidity requires dehumidification even in cold conditions
-    let rule1 = FuzzyRule::new(
-        vec![Antecedent::new("very cold", "Temperature"), Antecedent::new("high", "Humidity")],
-        vec![Consequent::new("high", "AC Power")],
-        RuleOperator::And
-    );
-    system.add_rule(rule1);
+        "export-memberships" | "export" => {
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!("║   MODO: EXPORTAR FUNCIONES DE PERTENENCIA           ║");
+            println!("╚══════════════════════════════════════════════════════╝\n");
 
-    // Rule 2: Moderate conditions need moderate AC power
-    let rule2 = FuzzyRule::new(
-        vec![Antecedent::new("cold", "Temperature"), Antecedent::new("medium", "Humidity")],
-        vec![Consequent::new("medium", "AC Power")],
-        RuleOperator::And
-    );
-    system.add_rule(rule2);
+            if let Err(e) = membership_export::export_all_vehicle_types(&args.output_dir) {
+                eprintln!("\nError al exportar funciones de pertenencia: {}", e);
+                process::exit(1);
+            }
 
-    // Rule 3: Comfortable conditions need minimal AC
-    let rule3 = FuzzyRule::new(
-        vec![Antecedent::new("warm", "Temperature"), Antecedent::new("low", "Humidity")],
-        vec![Consequent::new("low", "AC Power")],
-        RuleOperator::And
-    );
-    system.add_rule(rule3);
+            println!("\n✓ Exportación completada exitosamente!");
+        }
 
-    // Rule 4: Hot and humid conditions need maximum AC power
-    let rule4 = FuzzyRule::new(
-        vec![Antecedent::new("hot", "Temperature"), Antecedent::new("high", "Humidity")],
-        vec![Consequent::new("high", "AC Power")],
-        RuleOperator::And
-    );
-    system.add_rule(rule4);
-
-    // Rule 5: Hot but dry conditions need moderate cooling
-    let rule5 = FuzzyRule::new(
-        vec![Antecedent::new("hot", "Temperature"), Antecedent::new("low", "Humidity")],
-        vec![Consequent::new("medium", "AC Power")],
-        RuleOperator::And
-    );
-    system.add_rule(rule5);
-
-    // low AC power when very cold or cold test
-    let inputs = vec![
-        ("Temperature".to_string(), 15.0),
-        ("Humidity".to_string(), 80.0),
-    ].into_iter().collect();
-    let (output_var, output_value) = system.evaluate(&inputs);
-    println!("For inputs {:?}, the output '{}' is {:.2}", inputs, output_var, output_value);
-
-    // high AC power when hot and high humidity test
-    let inputs = vec![
-        ("Temperature".to_string(), 90.0),
-        ("Humidity".to_string(), 85.0),
-    ].into_iter().collect();
-    let (output_var, output_value) = system.evaluate(&inputs);
-    println!("For inputs {:?}, the output '{}' is {:.2}", inputs, output_var, output_value);
-
-    // medium AC power when warm and low humidity test
-    let inputs = vec![
-        ("Temperature".to_string(), 55.0),
-        ("Humidity".to_string(), 35.0),
-    ].into_iter().collect();
-    let (output_var, output_value) = system.evaluate(&inputs);
-    println!("For inputs {:?}, the output '{}' is {:.2}", inputs, output_var, output_value);
-
-    println!("Fuzzy system evaluation completed.");
-    println!("-----------------------------------");
-    println!("System details:\n{}", system);
-
+        _ => {
+            eprintln!("\n❌ Error: Modo desconocido '{}'\n", args.mode);
+            eprintln!("Modos válidos:");
+            eprintln!("  - navigation (nav)         : Ejecutar simulación de navegación");
+            eprintln!("  - benchmark (bench)        : Ejecutar múltiples simulaciones para estadísticas");
+            eprintln!("  - visualizer (viz, visual) : Abrir el visualizador interactivo");
+            eprintln!("  - export-memberships (export) : Exportar gráficos de funciones de pertenencia");
+            eprintln!("\nEjemplos:");
+            eprintln!("  cargo run -- --mode navigation");
+            eprintln!("  cargo run -- --mode benchmark --iterations 100");
+            eprintln!("  cargo run -- --mode benchmark --iterations 100 --threads 4  # Limitar a 4 threads");
+            eprintln!("  cargo run -- --mode visualizer");
+            eprintln!("  cargo run -- --mode export-memberships --output-dir output/plots\n");
+            process::exit(1);
+        }
+    }
 }

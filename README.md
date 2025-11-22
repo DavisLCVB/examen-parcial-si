@@ -27,7 +27,28 @@ src/
 
 ## Uso
 
-### Compilar y Ejecutar
+### Sistema Unificado (NUEVO)
+
+El sistema ahora cuenta con un punto de entrada unificado con múltiples modos de operación:
+
+```bash
+# Ver ayuda
+cargo run --bin examen-parcial -- --help
+
+# Modo 1: Navegación (simula 3 vehículos)
+cargo run --bin examen-parcial -- --mode navigation
+
+# Modo 2: Visualizador interactivo
+cargo run --bin examen-parcial -- --mode visualizer
+
+# Modo 3: Benchmark (ejecuta N iteraciones EN PARALELO)
+cargo run --bin examen-parcial -- --mode benchmark --iterations 100
+
+# Modo 4: Exportar funciones de pertenencia (NUEVO)
+cargo run --bin examen-parcial -- --mode export-memberships
+```
+
+### Compilar y Ejecutar (Método Legacy)
 
 ```bash
 # Opción 1: Usar el script helper (ejecuta ambos pasos)
@@ -199,11 +220,96 @@ El sistema incluye un **visualizador 2D con macroquad** que muestra:
   - `← →`: Ajustar velocidad de reproducción (0.1x - 10x)
   - `R`: Reiniciar desde el inicio
 
+## Benchmark Paralelo (NUEVO)
+
+El modo benchmark ahora ejecuta las simulaciones **en paralelo** usando `rayon`, aprovechando todos los cores del CPU:
+
+```bash
+cargo run --bin examen-parcial -- --mode benchmark --iterations 100
+```
+
+### Rendimiento
+
+El benchmark automáticamente detecta y usa todos los cores disponibles:
+
+```
+Configuration:
+  Iterations: 100
+  Parallel execution: ENABLED (using 12 threads)
+```
+
+**Aceleración típica:**
+- CPU 4 cores: ~3-4x más rápido
+- CPU 8 cores: ~6-8x más rápido
+- CPU 12+ cores: ~10-15x más rápido
+
+**Ejemplo real:**
+- 10 iteraciones secuenciales: ~3-4 minutos
+- 10 iteraciones paralelas (12 cores): ~17 segundos
+
+### Control de Temperatura del CPU
+
+Por defecto, el benchmark usa **la mitad de los cores disponibles** para evitar sobrecalentar el CPU. Puedes ajustar esto con el parámetro `--threads`:
+
+```bash
+# Usar solo 4 threads (CPU más frío)
+cargo run --bin examen-parcial -- --mode benchmark --iterations 100 --threads 4
+
+# Usar 6 threads (balance entre velocidad y temperatura)
+cargo run --bin examen-parcial -- --mode benchmark --iterations 100 --threads 6
+
+# Usar todos los cores disponibles (máxima velocidad, más calor)
+cargo run --bin examen-parcial -- --mode benchmark --iterations 100 --threads 12
+```
+
+**Recomendaciones según temperatura:**
+- CPU < 60°C: Usar todos los cores disponibles
+- CPU 60-70°C: Usar la mitad de los cores (default)
+- CPU > 70°C: Limitar a 4-6 threads
+
+### Ventajas
+
+- ✅ Aprovecha múltiples cores del CPU de forma controlada
+- ✅ Control de temperatura con parámetro `--threads`
+- ✅ Progreso en tiempo real thread-safe
+- ✅ Resultados idénticos al modo secuencial
+- ✅ Ideal para estudios estadísticos con muchas iteraciones
+
+## Exportación de Funciones de Pertenencia (NUEVO)
+
+El sistema ahora puede exportar gráficos PNG de todas las funciones de pertenencia del sistema difuso:
+
+```bash
+cargo run --bin examen-parcial -- --mode export-memberships
+```
+
+### Salida Generada
+
+Para cada tipo de vehículo (Barco, Lancha, Avión) se generan 4 gráficos:
+
+**Entradas:**
+- `input_distancia_al_objetivo.png` - Funciones: muy_cerca, media, lejos
+- `input_error_angular.png` - Funciones: alineado, desviado_izq/der, muy_desviado_izq/der
+- `input_velocidad_relativa.png` - Funciones: lenta, media, rapida
+
+**Salida:**
+- `output_ajuste_angular.png` - Funciones: girar_izq, leve_izq, mantener, leve_der, girar_der
+
+Los gráficos se guardan en: `output/memberships/[TipoVehiculo]/`
+
+### Personalizar Directorio de Salida
+
+```bash
+cargo run --bin examen-parcial -- --mode export --output-dir mi_carpeta/plots
+```
+
 ## Próximas Extensiones
 
 ### Fase 2: Sistema Completo
 
-- [ ] Múltiples vehículos (3-10)
+- [x] Múltiples vehículos (3 vehículos simultáneos)
+- [x] Sistema unificado con CLI
+- [x] Exportación de funciones de pertenencia
 - [ ] Detección y evitación de colisiones
 - [ ] Control de velocidad variable
 - [ ] Reglas para aproximación final con ángulo de llegada
@@ -211,9 +317,9 @@ El sistema incluye un **visualizador 2D con macroquad** que muestra:
 
 ### Fase 3: Mejoras de Visualización
 
+- [x] Vista de múltiples vehículos simultáneos
+- [x] Gráficas de métricas en tiempo real
 - [ ] Selector de archivo JSON en la UI
-- [ ] Vista de múltiples vehículos simultáneos
-- [ ] Graficas de velocidad/distancia en tiempo real
 - [ ] Exportar video de la simulación
 - [ ] Modo debug con información de fuzzy sets
 

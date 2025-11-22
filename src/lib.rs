@@ -3,3 +3,4 @@ pub mod map;
 pub mod vehicle;
 pub mod navigation;
 pub mod simulation;
+pub mod membership_export;
