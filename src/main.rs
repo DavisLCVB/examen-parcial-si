@@ -1,91 +1,43 @@
-// Unified entry point for the Fuzzy Navigation System
-//
-// Run with:
-//   cargo run -- --mode navigation [--iterations N]
-//   cargo run -- --mode benchmark [--iterations N]
-//   cargo run -- --mode visualizer
-//   cargo run -- --mode export-memberships [--output-dir DIR]
+// Fuzzy Navigation System API
+// Powered by Shuttle and Axum
+use shuttle_axum::axum::{
+    routing::{get, post},
+    Router,
+};
+use tower_http::cors::{CorsLayer, Any};
+use tower_http::trace::TraceLayer;
+use std::panic;
 
-use clap::Parser;
-use examen_parcial::membership_export;
-use std::process;
+use examen_parcial::api::handlers;
 
-mod navigation_runner;
-mod benchmark_runner;
-mod visualizer_runner;
+#[shuttle_runtime::main]
+async fn main() -> shuttle_axum::ShuttleAxum {
+    // Set custom panic hook to avoid writing to stdout/stderr
+    // This prevents "Broken pipe" errors when stdout is not available
+    panic::set_hook(Box::new(|_panic_info| {
+        // Silently ignore panics or log to a file/service instead
+        // In production, you'd want to log this to a proper logging service
+        let _ = std::fs::write("/tmp/fuzzy_nav_panic.log", format!("{:?}", _panic_info));
+    }));
+    // Configure CORS
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
 
-#[derive(Parser, Debug)]
-#[command(author, version, about = "Sistema de Navegación Difusa Multi-Vehículo", long_about = None)]
-struct Args {
-    #[arg(short, long, value_name = "MODE")]
-    #[arg(help = "Modo de ejecución: navigation, benchmark, visualizer, export-memberships")]
-    mode: String,
+    // Build router with all endpoints
+    let router = Router::new()
+        // Health check
+        .route("/", get(handlers::health_check))
+        .route("/health", get(handlers::health_check))
 
-    #[arg(short, long, default_value_t = 30)]
-    #[arg(help = "Número de iteraciones (solo para benchmark)")]
-    iterations: usize,
+        // Simulation endpoints
+        .route("/api/simulate", post(handlers::run_simulation))
+        .route("/api/benchmark", post(handlers::run_benchmark))
 
-    #[arg(short, long, default_value = "output/memberships")]
-    #[arg(help = "Directorio de salida para exportar funciones de pertenencia")]
-    output_dir: String,
+        // Add middleware
+        .layer(cors)
+        .layer(TraceLayer::new_for_http());
 
-    #[arg(short = 't', long)]
-    #[arg(help = "Número de threads para benchmark paralelo (por defecto: mitad de los cores disponibles)")]
-    threads: Option<usize>,
-}
-
-fn main() {
-    let args = Args::parse();
-
-    match args.mode.to_lowercase().as_str() {
-        "navigation" | "nav" => {
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!("║   MODO: NAVEGACIÓN MULTI-VEHÍCULO                    ║");
-            println!("╚══════════════════════════════════════════════════════╝\n");
-            navigation_runner::run();
-        }
-
-        "benchmark" | "bench" => {
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!("║   MODO: BENCHMARK                                    ║");
-            println!("╚══════════════════════════════════════════════════════╝\n");
-            benchmark_runner::run(args.iterations, args.threads);
-        }
-
-        "visualizer" | "viz" | "visual" => {
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!("║   MODO: VISUALIZADOR                                 ║");
-            println!("╚══════════════════════════════════════════════════════╝\n");
-            visualizer_runner::run();
-        }
-
-        "export-memberships" | "export" => {
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!("║   MODO: EXPORTAR FUNCIONES DE PERTENENCIA           ║");
-            println!("╚══════════════════════════════════════════════════════╝\n");
-
-            if let Err(e) = membership_export::export_all_vehicle_types(&args.output_dir) {
-                eprintln!("\nError al exportar funciones de pertenencia: {}", e);
-                process::exit(1);
-            }
-
-            println!("\n✓ Exportación completada exitosamente!");
-        }
-
-        _ => {
-            eprintln!("\n❌ Error: Modo desconocido '{}'\n", args.mode);
-            eprintln!("Modos válidos:");
-            eprintln!("  - navigation (nav)         : Ejecutar simulación de navegación");
-            eprintln!("  - benchmark (bench)        : Ejecutar múltiples simulaciones para estadísticas");
-            eprintln!("  - visualizer (viz, visual) : Abrir el visualizador interactivo");
-            eprintln!("  - export-memberships (export) : Exportar gráficos de funciones de pertenencia");
-            eprintln!("\nEjemplos:");
-            eprintln!("  cargo run -- --mode navigation");
-            eprintln!("  cargo run -- --mode benchmark --iterations 100");
-            eprintln!("  cargo run -- --mode benchmark --iterations 100 --threads 4  # Limitar a 4 threads");
-            eprintln!("  cargo run -- --mode visualizer");
-            eprintln!("  cargo run -- --mode export-memberships --output-dir output/plots\n");
-            process::exit(1);
-        }
-    }
+    Ok(router.into())
 }

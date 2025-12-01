@@ -1,0 +1,74 @@
+### Fuzzy Navigation System API - Examples
+### Use with REST Client extension in VS Code or similar tools
+
+### Health Check
+GET http://localhost:8000/health
+
+###
+
+### Simple Simulation - Default Parameters
+POST http://localhost:8000/api/simulate
+Content-Type: application/json
+
+{}
+
+###
+
+### Simulation - Single Vehicle
+POST http://localhost:8000/api/simulate
+Content-Type: application/json
+
+{
+  "vehicle_types": ["Standard"],
+  "max_time": 300.0
+}
+
+###
+
+### Simulation - Custom Parameters
+POST http://localhost:8000/api/simulate
+Content-Type: application/json
+
+{
+  "vehicle_types": ["Heavy", "Agile"],
+  "dt": 0.05,
+  "max_time": 400.0,
+  "map_width": 1000.0,
+  "map_height": 800.0,
+  "target_x": 500.0,
+  "target_y": 700.0
+}
+
+###
+
+### Benchmark - Quick Test (5 iterations)
+POST http://localhost:8000/api/benchmark
+Content-Type: application/json
+
+{
+  "iterations": 5,
+  "vehicle_types": ["Standard"]
+}
+
+###
+
+### Benchmark - Full Test (30 iterations, all vehicles)
+POST http://localhost:8000/api/benchmark
+Content-Type: application/json
+
+{
+  "iterations": 30,
+  "vehicle_types": ["Heavy", "Standard", "Agile"],
+  "threads": 4
+}
+
+###
+
+### Benchmark - High Performance (100 iterations, 8 threads)
+POST http://localhost:8000/api/benchmark
+Content-Type: application/json
+
+{
+  "iterations": 100,
+  "threads": 8
+}

@@ -5,6 +5,19 @@ use crate::navigation::NavigationController;
 use crate::vehicle::{create_vehicle_preset, Vehicle, VehicleType};
 use serde::{Deserialize, Serialize};
 
+// Conditional printing macro - only prints when CLI feature is enabled
+#[cfg(feature = "cli")]
+macro_rules! sim_println {
+    ($($arg:tt)*) => {
+        println!($($arg)*)
+    };
+}
+
+#[cfg(not(feature = "cli"))]
+macro_rules! sim_println {
+    ($($arg:tt)*) => {};
+}
+
 /// Snapshot of vehicle state at a given time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrajectoryPoint {
@@ -133,8 +146,8 @@ impl Simulation {
                 distance_to_target,
             });
 
-            println!("\n✓ Vehicle arrived successfully at t={:.2}s", self.time);
-            println!("  Distance: {:.2} units, Angle error: {:.1}°", distance_to_target, angle_error.to_degrees());
+            sim_println!("\n✓ Vehicle arrived successfully at t={:.2}s", self.time);
+            sim_println!("  Distance: {:.2} units, Angle error: {:.1}°", distance_to_target, angle_error.to_degrees());
             return;
         }
 
@@ -195,32 +208,32 @@ impl Simulation {
 
     /// Run the complete simulation
     pub fn run(&mut self) -> SimulationResult {
-        println!("\n╔══════════════════════════════════════════════════════╗");
-        println!("║       FUZZY NAVIGATION SIMULATION STARTED           ║");
-        println!("╚══════════════════════════════════════════════════════╝\n");
+        sim_println!("\n╔══════════════════════════════════════════════════════╗");
+        sim_println!("║       FUZZY NAVIGATION SIMULATION STARTED           ║");
+        sim_println!("╚══════════════════════════════════════════════════════╝\n");
 
-        println!("Vehicle Type: {} ", self.vehicle.vehicle_type.name());
-        println!("  - Size: {}", self.vehicle.characteristics.size);
-        println!("  - Max Speed: {:.1} units/s", self.vehicle.characteristics.max_velocity);
-        println!("  - Max Acceleration: {:.1} units/s²", self.vehicle.characteristics.max_acceleration);
-        println!("  - Maneuverability: {:.1}°/s\n", self.vehicle.characteristics.maneuverability.to_degrees());
+        sim_println!("Vehicle Type: {} ", self.vehicle.vehicle_type.name());
+        sim_println!("  - Size: {}", self.vehicle.characteristics.size);
+        sim_println!("  - Max Speed: {:.1} units/s", self.vehicle.characteristics.max_velocity);
+        sim_println!("  - Max Acceleration: {:.1} units/s²", self.vehicle.characteristics.max_acceleration);
+        sim_println!("  - Maneuverability: {:.1}°/s\n", self.vehicle.characteristics.maneuverability.to_degrees());
 
-        println!("Map: {}x{}", self.map.width, self.map.height);
-        println!("Target: ({:.1}, {:.1})", self.map.target.position.x, self.map.target.position.y);
-        println!("Required arrival angle: {:.1}°\n", self.map.target.required_angle.to_degrees());
+        sim_println!("Map: {}x{}", self.map.width, self.map.height);
+        sim_println!("Target: ({:.1}, {:.1})", self.map.target.position.x, self.map.target.position.y);
+        sim_println!("Required arrival angle: {:.1}°\n", self.map.target.required_angle.to_degrees());
 
-        println!("Starting Position: ({:.1}, {:.1})",
+        sim_println!("Starting Position: ({:.1}, {:.1})",
             self.vehicle.state.position.x,
             self.vehicle.state.position.y);
-        println!("Starting Angle: {:.1}°\n", self.vehicle.state.angle.to_degrees());
+        sim_println!("Starting Angle: {:.1}°\n", self.vehicle.state.angle.to_degrees());
 
-        let initial_distance = euclidean_distance(
+        let _initial_distance = euclidean_distance(
             &self.vehicle.state.position,
             &self.map.target.position,
         );
-        println!("Initial Distance to Target: {:.1} units\n", initial_distance);
+        sim_println!("Initial Distance to Target: {:.1} units\n", _initial_distance);
 
-        println!("Running simulation (dt={:.3}s, max_time={:.1}s)...\n", self.dt, self.max_time);
+        sim_println!("Running simulation (dt={:.3}s, max_time={:.1}s)...\n", self.dt, self.max_time);
 
         let mut step_count = 0;
         let print_interval = (5.0 / self.dt) as usize; // Print every 5 seconds
@@ -230,17 +243,17 @@ impl Simulation {
             step_count += 1;
 
             if step_count % print_interval == 0 {
-                let dist = euclidean_distance(
+                let _dist = euclidean_distance(
                     &self.vehicle.state.position,
                     &self.map.target.position,
                 );
-                println!(
+                sim_println!(
                     "[t={:6.2}s] pos=({:6.1}, {:6.1}) vel={:5.1} dist={:6.1} angle={:6.1}°",
                     self.time,
                     self.vehicle.state.position.x,
                     self.vehicle.state.position.y,
                     self.vehicle.state.velocity,
-                    dist,
+                    _dist,
                     self.vehicle.state.angle.to_degrees()
                 );
             }
@@ -264,21 +277,21 @@ impl Simulation {
             final_distance_to_target: final_distance,
         };
 
-        println!("\n╔══════════════════════════════════════════════════════╗");
-        println!("║              SIMULATION COMPLETED                    ║");
-        println!("╚══════════════════════════════════════════════════════╝\n");
+        sim_println!("\n╔══════════════════════════════════════════════════════╗");
+        sim_println!("║              SIMULATION COMPLETED                    ║");
+        sim_println!("╚══════════════════════════════════════════════════════╝\n");
 
-        println!("Results:");
-        println!("  Success: {}", if metrics.success { "YES ✓" } else { "NO ✗" });
-        if let Some(t) = metrics.arrival_time {
-            println!("  Arrival Time: {:.2}s", t);
+        sim_println!("Results:");
+        sim_println!("  Success: {}", if metrics.success { "YES ✓" } else { "NO ✗" });
+        if let Some(_t) = metrics.arrival_time {
+            sim_println!("  Arrival Time: {:.2}s", _t);
         } else {
-            println!("  Status: Did not arrive (timeout at {:.2}s)", self.max_time);
+            sim_println!("  Status: Did not arrive (timeout at {:.2}s)", self.max_time);
         }
-        println!("  Distance Traveled: {:.2} units", metrics.distance_traveled);
-        println!("  Final Distance to Target: {:.2} units", metrics.final_distance_to_target);
-        println!("  Final Angle Error: {:.2}°", metrics.final_angle_error);
-        println!("  Total Steps: {}", step_count);
+        sim_println!("  Distance Traveled: {:.2} units", metrics.distance_traveled);
+        sim_println!("  Final Distance to Target: {:.2} units", metrics.final_distance_to_target);
+        sim_println!("  Final Angle Error: {:.2}°", metrics.final_angle_error);
+        sim_println!("  Total Steps: {}", step_count);
 
         SimulationResult {
             vehicle_type: self.vehicle.vehicle_type.name().to_string(),

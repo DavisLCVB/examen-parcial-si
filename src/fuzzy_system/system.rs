@@ -3,6 +3,19 @@ use std::fmt;
 
 use crate::fuzzy_system::{DefuzzificationMethod, FuzzyRule, LinguisticVariable};
 
+// Conditional printing macro - only prints when CLI feature is enabled
+#[cfg(feature = "cli")]
+macro_rules! fuzzy_eprintln {
+    ($($arg:tt)*) => {
+        eprintln!($($arg)*)
+    };
+}
+
+#[cfg(not(feature = "cli"))]
+macro_rules! fuzzy_eprintln {
+    ($($arg:tt)*) => {};
+}
+
 pub struct FuzzySystem{
     pub name: String,
     pub input_variables: Vec<LinguisticVariable>,
@@ -40,7 +53,7 @@ impl FuzzySystem {
         // Validate that all required input variables are present
         for var in &self.input_variables {
             if !inputs.contains_key(&var.name) {
-                eprintln!("Warning: Input variable '{}' not found in inputs. Using default value 0.0", var.name);
+                fuzzy_eprintln!("Warning: Input variable '{}' not found in inputs. Using default value 0.0", var.name);
             }
         }
 
@@ -50,7 +63,7 @@ impl FuzzySystem {
             if let Some(&value) = inputs.get(&var.name) {
                 // Validate input is within expected range
                 if value < var.range.0 || value > var.range.1 {
-                    eprintln!("Warning: Input '{}' = {} is outside expected range {:?}",
+                    fuzzy_eprintln!("Warning: Input '{}' = {} is outside expected range {:?}",
                              var.name, value, var.range);
                 }
                 fuzzyfied_inputs.insert(var.name.clone(), var.fuzzify(value));
@@ -69,7 +82,7 @@ impl FuzzySystem {
             for consequent in &rule.consequents {
                 // Validate consequent references valid output set
                 if !self.output_variable.fuzzy_sets.iter().any(|s| s.name == consequent.set) {
-                    eprintln!("Warning: Consequent set '{}' not found in output variable '{}'",
+                    fuzzy_eprintln!("Warning: Consequent set '{}' not found in output variable '{}'",
                              consequent.set, self.output_variable.name);
                     continue;
                 }
@@ -79,7 +92,7 @@ impl FuzzySystem {
         }
 
         if !any_rule_fired {
-            eprintln!("Warning: No rules were activated for inputs {:?}", inputs);
+            fuzzy_eprintln!("Warning: No rules were activated for inputs {:?}", inputs);
         }
 
         // Defuzzification phase

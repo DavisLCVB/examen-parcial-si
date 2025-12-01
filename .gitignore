@@ -5,3 +5,10 @@ prompt.md
 docs
 output
 .claude
+
+# Shuttle
+.shuttle
+Secrets.toml
+Secrets.dev.toml
+.shuttle*
+Secrets*.toml
